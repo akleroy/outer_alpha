@@ -11,3 +11,4 @@ git rebase -i origin master
 git add somefile.pro
 git commit -m "commit message"
 git push
+git config --global credential.helper 'cache --timeout=86400'
