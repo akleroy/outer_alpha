@@ -19,6 +19,8 @@ pro n1_dgrvsmetals,$
 ;
 ;-
 
+	
+
 	datadir = 'data/'
 	readcol,targetlist,galname,format='A'
 	ntarg = n_elements(galname)
@@ -28,6 +30,25 @@ pro n1_dgrvsmetals,$
 		; restore the sampled structure
 		restore,datadir+galname[i]+'_samp.sav'
 
+		if gstruct.metal_source eq 'Not in M10 Table 8' then goto,skip
+
+		; convert the hi into mass surface density
+		fac = 1.36*mh*pc*pc/ms ; accounts for He
+		hi = gstruct.hi*fac
+		hiunc = gstruct.hi_unc*fac
+
+		; scale MW DGR with metallicity
+		mw_oh = 10.^(mwmetal-12d)
+		oh = 10.^(gstruct.metal)
+		scldgr = mwdgr*oh/mw_oh
+
+		; convert dust mass surface density into gas with DGR
+		
+
+
+		stop
+
+		skip:
 	endfor
 
 end
