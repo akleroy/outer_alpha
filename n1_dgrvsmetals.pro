@@ -1,5 +1,6 @@
 pro n1_dgrvsmetals,$
 	targetlist=targetlist,$
+	just=just,$
 	mwdgr=mwdgr,$
 	mwmetal=mwmetal,$
 	outfile=outfile
@@ -19,18 +20,32 @@ pro n1_dgrvsmetals,$
 ;
 ;-
 
-	
+	@code/constants.bat	
 
 	datadir = 'data/'
-	readcol,targetlist,galname,format='A'
+	
+	if keyword_set(just) eq 0 then BEGIN
+		readcol,targetlist,galname,format='A'
+	endif else BEGIN
+		galname = [just]
+	endelse
+
 	ntarg = n_elements(galname)
+
+;	plot,findgen(10),findgen(10),/xlog,/ylog,$
+;		xr=[3d-3,3d-2],yr=[1d-1,1d3],/xs,/ys,/nodata
+	plot,findgen(10),findgen(10),/ylog,$
+		xr=[8.0,9.0],yr=[1d-1,1d3],/ys,/xs,/nodata
 
 	for i=0,ntarg-1 do BEGIN
 
 		; restore the sampled structure
 		restore,datadir+galname[i]+'_samp.sav'
 
-		if gstruct.metal_source eq 'Not in M10 Table 8' then goto,skip
+		if gstruct.metal_source eq 'Not in M10 Table 8' then BEGIN
+			print,'Skipping '+galname[i]
+			goto,skip
+		endif
 
 		; convert the hi into mass surface density
 		fac = 1.36*mh*pc*pc/ms ; accounts for He
@@ -39,12 +54,19 @@ pro n1_dgrvsmetals,$
 
 		; scale MW DGR with metallicity
 		mw_oh = 10.^(mwmetal-12d)
-		oh = 10.^(gstruct.metal)
+		oh = 10.^(gstruct.metal-12d)
 		scldgr = mwdgr*oh/mw_oh
 
 		; convert dust mass surface density into gas with DGR
+		totgas = gstruct.sigdust/scldgr	
 		
+		h2 = totgas-hi
 
+		; conversion factor!
+		aco = h2/(gstruct.co_hera/0.7d)
+
+;		oplot,scldgr,aco,ps=3
+		oplot,gstruct.metal,aco,ps=3
 
 		stop
 
