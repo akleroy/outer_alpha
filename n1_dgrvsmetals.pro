@@ -47,6 +47,13 @@ pro n1_dgrvsmetals,$
 			goto,skip
 		endif
 
+		; make radial profiles
+		bin_prof,gstruct.r25,gstruct.co_hera,binsize=0.1,$
+			medprof=medcoprof,meanprof=meancoprof,xmid_bin=xout
+
+			stop
+
+
 		; convert the hi into mass surface density
 		fac = 1.36*mh*pc*pc/ms ; accounts for He
 		hi = gstruct.hi*fac
