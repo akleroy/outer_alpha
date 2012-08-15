@@ -108,32 +108,64 @@ pro make_rprof, just=just
         endelse
      endfor
 
-;    &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-;    CALCULATE XCO
-;    &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  endfor
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; CALCULATE XCO
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 ;  dgr = 1e-2*10.^(big_struct.metals-8.5)
-  dgr = 1.5e-2*10.^(big_struct.metals-8.5)
-  h2 = big_struct.dust/dgr - big_struct.hi
+  solar_dgr = 2e-2
+  dgr_pred = solar_dgr*10.^(big_struct.metals-8.5)
+  h2 = big_struct.dust/dgr_pred - big_struct.hi
   alpha = h2 / big_struct.co
-  plot, big_struct.metals, alpha, ps=8, /ylo, yrange=[1,1e3]
 
-;    &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-;    PLOT
-;    &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  fid_x = findgen(101)/100. + 8.0
+  fid_dgr = solar_dgr*10.^(fid_x-8.5)
+  fid_y = calc_alpha(fid_dgr/solar_dgr, alpha_0=6.3 $
+                     , av_0 = 2.3)
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; DUST-TO-GAS RATIO CHECK
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  dgr_fid = big_struct.dust/ $
+            (big_struct.co*6.3 + big_struct.hi)
+
+  dgr_hi = big_struct.dust / big_struct.hi
   
-  psfile = "alpha_co
-  ps, 
+  plot, big_struct.metals, dgr_fid $
+        , ps=1, /ylo, xrange=[8,9], yrange=[1e-4, 1e0]
   circle, /fill
-  plot, xmid, (co_mean/median(co_mean)) $
-        , /ylo, ps=-8, yrange=[1e-2, 1e2], title=g
-  oplot, xmid, hi_mean/median(hi_mean) $
-         , ps=-8, color=getcolor('red')
-     oplot, xmid, dust_mean/median(dust_mean) $
-            , ps=-8, color=getcolor('blue')
-     
-     ;ch = get_kbrd(1)
-  endfor
+  for k = 0, ngals-1 do begin & $
+     ind = where(big_struct.gal eq gals[k] and $
+                 big_struct.co*6.3*3. lt big_struct.hi, ct) & $
+     if ct eq 0 then continue & $
+     plot, [big_struct[ind].metals], [dgr_fid[ind]], ps=8 $
+     , xrange=[8,9], yrange=[1e-3, 1e0], /ylo & $
+     print, gals[k] & $
+     xfid = findgen(101)/100.+8.0 & $
+     yfid = 1.75e-2*10.^(xfid-8.5) & $
+     oplot, [xfid], [yfid], thick=3, lines=1 & $
+     ch = get_kbrd(1) & $     
+     endfor
+  
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; PLOT
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  psfile = "../plots/alpha_co.eps"
+  ps, file=psfile, /def, xsize=12, ysize=8, /color, /encapsulated, /ps
+  circle, /fill
+  plot, big_struct.metals, alpha $
+        , psym=8 $
+        , ytitle="!7a!6!dCO!n [M!d!9n!6!n pc!u-2!n (K km s!u-1!n)!u-1!n]" $
+        , xtitle="!6Metallicity [12 + log O/H]" $
+        , charthick=3, charsize=2, /ylo, yrange=[1e-1, 1e3]
+  oplot, [8.0, 9.0], [6.3, 6.3], lines=2, thick=3  
+  oplot, fid_x, fid_y, thick=4, lines=1
+  ps, /x
+  spawn, 'gv '+psfile+' &'
 
 
 
