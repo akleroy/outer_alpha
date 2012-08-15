@@ -3,6 +3,7 @@ pro n1_dgrvsmetals,$
 	just=just,$
 	mwdgr=mwdgr,$
 	mwmetal=mwmetal,$
+	r25bin=r25bin,$
 	outfile=outfile
 
 ;+
@@ -31,12 +32,19 @@ pro n1_dgrvsmetals,$
 	endelse
 
 	ntarg = n_elements(galname)
+	if ntarg gt 1 then BEGIN
+		clr = scale_vector(findgen(ntarg),0,255)
+	endif else BEGIN
+		clr = 255
+	endelse
 
 ;	plot,findgen(10),findgen(10),/xlog,/ylog,$
 ;		xr=[3d-3,3d-2],yr=[1d-1,1d3],/xs,/ys,/nodata
 	plot,findgen(10),findgen(10),/ylog,$
-		xr=[8.0,9.0],yr=[1d-1,1d3],/ys,/xs,/nodata
+		xr=[7.7,9.0],yr=[1d-1,1d3],/ys,/xs,/nodata
 
+	j=0
+	loadct,4
 	for i=0,ntarg-1 do BEGIN
 
 		; restore the sampled structure
@@ -47,37 +55,65 @@ pro n1_dgrvsmetals,$
 			goto,skip
 		endif
 
+		r25 = gstruct.r25
+		co = gstruct.co_hera
+		hi = gstruct.hi
+		dust = gstruct.sigdust
+		metal = gstruct.metal
+
+		ok = where(finite(co) and finite(hi) and finite(dust))
+
 		; make radial profiles
-		bin_prof,gstruct.r25,gstruct.co_hera,binsize=0.1,$
-			medprof=medcoprof,meanprof=meancoprof,xmid_bin=xout
+		bin_prof,r25[ok],co[ok],binsize=r25bin,$
+			medprof=medcoprof,meanprof=meancoprof,xmid_bin=xout,$
+			stdprof=stdcoprof
 
-			stop
+		bin_prof,r25[ok],hi[ok],binsize=r25bin,$
+			medprof=medhiprof,meanprof=meanhiprof,xmid_bin=xout2,$
+			stdprof=stdhiprof
 
+		bin_prof,r25[ok],dust[ok],binsize=r25bin,$
+			medprof=meddustprof,meanprof=meandustprof,xmid_bin=xout3,$
+			stdprof=stddustprof
 
+		bin_prof,r25[ok],metal[ok],binsize=r25bin,$
+			medprof=medmetalprof,meanprof=meanmetalprof,xmid_bin=xout4
+			
 		; convert the hi into mass surface density
 		fac = 1.36*mh*pc*pc/ms ; accounts for He
-		hi = gstruct.hi*fac
-		hiunc = gstruct.hi_unc*fac
+		hi = meanhiprof*fac
+		hi_std = stdhiprof*fac
 
 		; scale MW DGR with metallicity
 		mw_oh = 10.^(mwmetal-12d)
-		oh = 10.^(gstruct.metal-12d)
+		oh = 10.^(meanmetalprof-12d)
 		scldgr = mwdgr*oh/mw_oh
+		scldgr_x2 = (mwdgr*2d)*oh/mw_oh
+		scldgr_d2 = (mwdgr/2d)*oh/mw_oh
 
 		; convert dust mass surface density into gas with DGR
-		totgas = gstruct.sigdust/scldgr	
-		
+		totgas = meandustprof/scldgr	
+		totgas_std = stddustprof/scldgr
+		totgas_dgrx2 = meandustprof/scldgr_x2
+		totgas_dgrd2 = meandustprof/scldgr_d2
+
 		h2 = totgas-hi
+		h2_dgrx2 = totgas_dgrx2 - hi
+		h2_dgrd2 = totgas_dgrd2 - hi
 
 		; conversion factor!
-		aco = h2/(gstruct.co_hera/0.7d)
+		aco = h2/(meancoprof/0.7d)
+		aco_dgrx2 = h2_dgrx2/(meancoprof/0.7d)
+		aco_dgrd2 = h2_dgrd2/(meancoprof/0.7d)
 
 ;		oplot,scldgr,aco,ps=3
-		oplot,gstruct.metal,aco,ps=3
+		oplot,meanmetalprof,aco,color=clr[i],ps=-4
+		oplot,meanmetalprof,aco_dgrx2,color=clr[i],linestyle=2
+		oplot,meanmetalprof,aco_dgrd2,color=clr[i],linestyle=2
 
-		stop
-
+		xyouts,[0.8],[0.8]-(j*0.05),galname[i],color=clr[i],/normal
+		j += 1
 		skip:
 	endfor
-
+stop
 end
