@@ -4,7 +4,8 @@ pro paper1_dgrvsmetal,$
 	just=just,$
 	mwmetal=mwmetal,$
 	mwdgr=mwdgr,$
-	goodsol=goodsol
+	goodsol=goodsol,$
+	thetacut=thetacut
 
 	; restore solutions
 	restore,saved
@@ -25,6 +26,8 @@ pro paper1_dgrvsmetal,$
     endelse
 
 	; generate plot stuff
+	if keyword_set(mwmetal) eq 0 then mwmetal = 8.5
+	if keyword_set(mwdgr) eq 0 then mwdgr = 1d-2
 	plot_oh = findgen(20)/10 + 7.5
 	oh = 10^(plot_oh-12d)
 	mw_oh = 10.^(mwmetal-12d)
@@ -35,6 +38,7 @@ pro paper1_dgrvsmetal,$
 	; where to find sampled galaxies
 	datadir = 'data/'
 
+	; can skip all the stuff if you just want good solutions
 	if keyword_set(goodsol) then BEGIN
 		restore,'allgoodsol.sav'
 		goto,goodsol
@@ -49,7 +53,8 @@ pro paper1_dgrvsmetal,$
 	oplot,plot_oh,scldgr_x2,linestyle=2
 
 	; set up vector to hold indices of galaxies with M10 gradients
-	; and good solutions from paper 1
+	; and good solutions from paper 1 and only their major axes if
+	; inclination is high
 	allgood = [0]
 
 	; loop through galaxies
@@ -57,7 +62,11 @@ pro paper1_dgrvsmetal,$
 	loadct,4
 	for i=0,ntarg-1 do BEGIN
 
+		; get galaxy orientation parameters
+		s = kingfish_galaxies(galname[i])
+
 		restore,datadir+galname[i]+'_samp.sav'
+
 		if gstruct.metal_source eq 'Not in M10 Table 8' then BEGIN
 			print,'Skipping '+galname[i]
 			goto,skip
@@ -65,9 +74,15 @@ pro paper1_dgrvsmetal,$
 
 		ok = where(allsol.gal eq galname[i],ct)
 		if ct eq 0 then goto,skip
+		deproject,allsol.ra_cen,allsol.dec_cen,gal=s,rgrid=rgrid,tgrid=tgrid,/vector
 
 		; pick out the good solutions
-		good = where(allsol.gal eq galname[i] and allsol.aco_unc lt 0.2,gct)
+		if s.incl_deg gt 60 and keyword_set(thetacut) then BEGIN
+			good = where(allsol.gal eq galname[i] and allsol.aco_unc lt 0.2 and $
+				abs(cos(tgrid)) gt 0.5,gct)
+		endif else BEGIN
+			good = where(allsol.gal eq galname[i] and allsol.aco_unc lt 0.2,gct)
+		endelse
 
 		oplot,allsol[ok].metal,allsol[ok].dgr,ps=3,color=clr[i] ;,/ylog,yr=[1d-4,1d0]
 		if gct gt 0 then BEGIN
