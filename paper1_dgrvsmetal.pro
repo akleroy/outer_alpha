@@ -109,7 +109,7 @@ pro paper1_dgrvsmetal,$
 
 	plot,allgoodsol.metal,alog10(allgoodsol.dgr),ps=1,xr=[8.0,9.0],yr=[-3,-1],$
 		tit='!6',xtit='12+log(O/H) (PT05)',$
-		ytit='Log(!7a!X!DCO!N) (M!D!9n!3!N!6 pc!U-2!N!6 (K km s!U-1!N!6)!U-1!N!6)',$
+		ytit='Log(DGR)',$
 		xthick=5,ythick=5,thick=3,charthick=5,charsize=1.3
 
 	blah = linfit(allgoodsol.metal,alog10(allgoodsol.dgr))
@@ -131,7 +131,7 @@ pro paper1_dgrvsmetal,$
 
 	restore,'data/prof_struct.idl'
 	plotsym,0,/fill
-	hidom = where(big_struct.hi gt big_struct.co*6d)
+	hidom = where(big_struct.hi gt big_struct.co21*6d)
 	oplot,big_struct[hidom].metals,alog10(big_struct[hidom].local_dgr),ps=8,$
 		thick=5,color=getcolor('forest')
 
