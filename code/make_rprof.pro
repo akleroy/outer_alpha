@@ -29,11 +29,20 @@ pro make_rprof, just=just
                     rmin:nan, $
                     rmax:nan, $
                     hi:nan, $
-                    co:nan, $
+                    hi_unc:nan, $
+                    co21:nan, $
+                    co21_unc:nan, $
+                    co10:nan, $
+                    co10_unc:nan, $
                     dust:nan, $
+                    dust_unc:nan, $
                     metals:nan, $
-                    local_dgr:nan $
+                    metals_unc:nan, $
+                    local_dgr:nan, $
+                    local_dgr_mad:nan $
                     }
+
+     oversamp = 6
 
 ;    &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ;    MAKE PROFILE
@@ -48,9 +57,16 @@ pro make_rprof, just=just
                 , /vector
 
      y1 = gstruct.co_hera
+     e1 = gstruct.co_hera_unc
+
      y2 = gstruct.hi*mh*1.36/ms*pc*pc
+     e2 = gstruct.hi_unc*mh*1.36/ms*pc*pc
+
      y3 = gstruct.sigdust
+     e3 = gstruct.sigdust_unc
+
      y4 = gstruct.metal
+     e4 = gstruct.metal_unc
 
      use_ind = where(finite(x) and $
                      finite(y1) and $
@@ -64,53 +80,78 @@ pro make_rprof, just=just
      if use_ct eq 0 then continue
      
      x = x[use_ind]
-     y1 = y1[use_ind]
-     y2 = y2[use_ind]
-     y3 = y3[use_ind]
-     y4 = y4[use_ind]
 
-     dgr = y3/(y2+y1*6.3)     
+     y1 = y1[use_ind]
+     e1 = e1[use_ind]
+
+     y2 = y2[use_ind]
+     e2 = e2[use_ind]
+
+     y3 = y3[use_ind]
+     e3 = e3[use_ind]
+
+     y4 = y4[use_ind]
+     e4 = e4[use_ind]
+
+     dgr = y3/(y2+y1*6.3)
      
      bin_prof, x, y1 $
+               , unc=e1 $
                , xmin=xmin $
                , xmax=xmax $
                , xmid=xmid $
-               , countprof=ctprof $
+               , countprof=co21_ctprof $
                , binsize=binsize $
-               , meanprof=co_mean $
-               , madprof=co_mad
+               , meanprof=co21_mean $
+               , madprof=co21_mad $
+               , oversamp=oversamp $
+               , errprof=co21_errprof
 
      bin_prof, x, y2 $
+               , unc=e2 $
                , xmin=xmin $
                , xmax=xmax $
                , xmid=xmid $
+               , countprof=hi_ctprof $
                , binsize=binsize $
                , meanprof=hi_mean $
-               , madprof=hi_mad
+               , madprof=hi_mad $
+               , oversamp=oversamp $
+               , errprof=hi_errprof
 
      bin_prof, x, y3 $
+               , unc=e3 $
                , xmin=xmin $
                , xmax=xmax $
                , xmid=xmid $
+               , countprof=dust_ctprof $
                , binsize=binsize $
                , meanprof=dust_mean $
-               , madprof=dust_mad
+               , madprof=dust_mad $
+               , oversamp=oversamp $
+               , errprof=dust_errprof
 
      bin_prof, x, y4 $
+               , unc=e4 $
                , xmin=xmin $
                , xmax=xmax $
                , xmid=xmid $
+               , countprof=metal_ctprof $
                , binsize=binsize $
                , meanprof=metal_mean $
-               , madprof=metal_mad
+               , madprof=metal_mad $
+               , oversamp=oversamp $
+               , errprof=metal_errprof
 
      bin_prof, x, dgr $
                , xmin=xmin $
                , xmax=xmax $
                , xmid=xmid $
+               , countprof=dgr_ctprof $
                , binsize=binsize $
                , medprof=dgr_med $
-               , madprof=dgr_mad
+               , madprof=dgr_mad $
+               , oversamp=oversamp
 
      nprof = n_elements(xmid)
      for j = 0, nprof-1 do begin
@@ -119,11 +160,22 @@ pro make_rprof, just=just
         this_struct.rmin = xmid[j]-binsize*0.5
         this_struct.rmax = xmid[j]+binsize*0.5
         this_struct.rmid = xmid[j]
-        this_struct.co = co_mean[j]
+
+        this_struct.co21 = co21_mean[j]        
+        this_struct.co21_unc = co21_errprof[j]
+
         this_struct.hi = hi_mean[j]
+        this_struct.hi_unc = hi_errprof[j]
+
         this_struct.dust = dust_mean[j]
+        this_struct.dust_unc = dust_errprof[j]
+
         this_struct.metals = metal_mean[j]
+        this_struct.metals_unc = nan
+
         this_struct.local_dgr = dgr_med[j]
+        this_struct.local_dgr_mad = dgr_mad[j]
+
         if n_elements(big_struct) eq 0 then begin
            big_struct = [this_struct]
         endif else begin
@@ -133,81 +185,8 @@ pro make_rprof, just=just
 
   endfor
 
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CALCULATE XCO
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-;  dgr = 1e-2*10.^(big_struct.metals-8.5)
-  solar_dgr = 1.8e-2
-  dgr_pred = solar_dgr*10.^(big_struct.metals-8.5)
-  h2 = big_struct.dust/dgr_pred - big_struct.hi
-  alpha = h2 / big_struct.co
-
-  fid_x = findgen(101)/100. + 8.0
-  fid_dgr = solar_dgr*10.^(fid_x-8.5)
-  fid_y = calc_alpha(fid_dgr/solar_dgr, alpha_0=3.2 $
-                     , av_0 = 2.3)
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; DUST-TO-GAS RATIO CHECK
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  dgr_fid = big_struct.dust/ $
-            (big_struct.co*6.3 + big_struct.hi)
-
-  dgr_hi = big_struct.dust / big_struct.hi
-  
-  plot, big_struct.metals, dgr_fid $
-        , ps=1, /ylo, xrange=[8,9], yrange=[1e-4, 1e0]
-  circle, /fill
-  for k = 0, ngals-1 do begin
-     ind = where(big_struct.gal eq gals[k] and $
-                 big_struct.co*6.3*3. lt big_struct.hi, ct)
-     if ct eq 0 then continue
-     plot, [big_struct[ind].metals], [dgr_fid[ind]], ps=8 $
-           , xrange=[8,9], yrange=[1e-3, 1e0], /ylo
-     print, gals[k]
-     xfid = findgen(101)/100.+8.0
-     yfid = 1.7e-2*10.^(xfid-8.5)
-     oplot, [xfid], [yfid], thick=3, lines=1
-                                ;ch = get_kbrd(1) & $     
-  endfor
-
   save, file="../data/prof_struct.idl" $
         , big_struct
-  
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; PLOT
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  ind = where(big_struct.gal ne "ngc2841")
-  x = big_struct[ind].metals
-  y = alpha[ind]
-  bin_prof, x, alog10(y) $
-            , xmin=8.2 $
-            , xmax=8.6 $
-            , binsize=0.1 $
-            , xmid=xmid $
-            , medprof=medalpha $
-            , madprof=madprof
-
-  psfile = "../plots/alpha_co.eps"
-  ps, file=psfile, /def, xsize=12, ysize=8, /color, /encapsulated, /ps
-  circle, /fill
-  ind = where(big_struct.gal ne "ngc2841")
-  plot, big_struct[ind].metals, alpha[ind] $
-        , psym=8 $
-        , ytitle="!7a!6!dCO!n [M!d!9n!6!n pc!u-2!n (K km s!u-1!n)!u-1!n]" $
-        , xtitle="!6Metallicity [12 + log O/H]" $
-        , charthick=3, charsize=2, /ylo, yrange=[1e-1, 1e3] 
-  oplot, [8.0, 9.0], [3.2, 3.2], lines=2, thick=3  
-  oplot, xmid, 10.^medalpha, psym=8, symsize=2, color=getcolor('red')
-  oplot, fid_x, fid_y, thick=4, lines=1
-  ps, /x
-  spawn, 'gv '+psfile+' &'
-
-
-
 
   stop
 

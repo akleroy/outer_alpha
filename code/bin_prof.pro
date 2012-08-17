@@ -1,4 +1,5 @@
 pro bin_prof, x, y $
+              , unc=unc $
               , xmin = xmin_in $
               , xmax = xmax_in $
               , binsize = binsize_in $
@@ -9,6 +10,7 @@ pro bin_prof, x, y $
               , madprof=madprof $
               , madlogprof=madlogprof $
               , stdprof=stdprof $
+              , stdmeanprof=stdmeanprof $
               , errprof=errprof $
               , maxprof=maxprof $
               , minprof=minprof $
@@ -168,6 +170,7 @@ pro bin_prof, x, y $
   madprof = dblarr(nbins)*!values.f_nan
   madlogprof = dblarr(nbins)*!values.f_nan
   stdprof = dblarr(nbins)*!values.f_nan
+  stdmeanprof = dblarr(nbins)*!values.f_nan
   errprof = dblarr(nbins)*!values.f_nan
   maxprof = dblarr(nbins)*!values.f_nan
   minprof = dblarr(nbins)*!values.f_nan
@@ -193,7 +196,7 @@ pro bin_prof, x, y $
 ;     IF WE HAVE SOME PIXELS, BIN... AND PROFIT!
       if (binct gt 1) then begin   
           indep = x[binind]
-          data = y[binind]
+          data = y[binind]         
 
 ;         ... MEAN AND MEDIAN VALUES
           xmeanprof[ii] = mean(indep,/nan)
@@ -202,14 +205,25 @@ pro bin_prof, x, y $
           
 ;        ... MAX AND MIN VALUES
           minprof[ii] = min(data, /nan)
-          maxprof[ii] = max(data, /nan)
+          maxprof[ii] = max(data, /nan)         
           
 ;         ... UNCERTAINTY ESTIMATES
           if (binct gt 5) then begin
               madprof[ii] = mad(data)
               madlogprof[ii] = mad(alog10(data))
               stdprof[ii] = stddev(data)
-              errprof[ii] = stdprof[ii] / sqrt(countprof[ii]/oversamp)
+              stdmeanprof[ii] = stdprof[ii] / sqrt(countprof[ii]/oversamp)
+              if n_elements(unc) gt 0 then begin
+                 if n_elements(unc) eq 1 then begin
+                    errprof[ii] = unc / sqrt(countprof[ii]/oversamp)
+                 endif else begin
+                    errprof[ii] = $
+                       sqrt(total(unc[binind]^2) / oversamp) $
+                       / countprof[ii]
+                 endelse
+              endif else begin
+                 errprof[ii] = !values.f_nan
+              endelse
           endif
 
 ;        ... IF REQUESTED, THEN SORT AND RETURN PERCENTILE VALUES
