@@ -104,21 +104,61 @@ pro paper1_dgrvsmetal,$
 
 	goodsol:
 	; plot
-	plot,allgoodsol.metal,alog10(allgoodsol.dgr),ps=1,xr=[8.0,9.0],yr=[-3,-1]
+	psopen,'fig1.eps',/encapsulated,/portrait,/color,$
+		xsize=8,ysize=5,/inches
+
+	plot,allgoodsol.metal,alog10(allgoodsol.dgr),ps=1,xr=[8.0,9.0],yr=[-3,-1],$
+		tit='!6',xtit='12+log(O/H) (PT05)',$
+		ytit='Log(!7a!X!DCO!N) (M!D!9n!3!N!6 pc!U-2!N!6 (K km s!U-1!N!6)!U-1!N!6)',$
+		xthick=5,ythick=5,thick=3,charthick=5,charsize=1.3
+
 	blah = linfit(allgoodsol.metal,alog10(allgoodsol.dgr))
 	x = findgen(20)/10 + 7.5
-	oplot,x,blah[0]+blah[1]*x,linestyle=2
+	oplot,x,blah[0]+blah[1]*x,linestyle=2,thick=5
 
-	oplot,x,x+(mean(alog10(allgoodsol.dgr)-allgoodsol.metal))
-	oplot,x,x+(mean(alog10(allgoodsol.dgr)-allgoodsol.metal))-alog10(2d),linestyle=1
-	oplot,x,x+(mean(alog10(allgoodsol.dgr)-allgoodsol.metal))+alog10(2d),linestyle=1
+	meanoff = (mean(alog10(allgoodsol.dgr)-allgoodsol.metal))
 
-	at85 = 8.5+(mean(alog10(allgoodsol.dgr)-allgoodsol.metal))
+	oplot,x,x+meanoff,thick=5
+	oplot,x,x+meanoff-alog10(2d),linestyle=1,thick=5
+	oplot,x,x+meanoff+alog10(2d),linestyle=1,thick=5
+
+	at85 = 8.5+meanoff
 
 	print,'Rank Correlation: '+string((r_correlate(allgoodsol.metal,alog10(allgoodsol.dgr)))[0])
 	print,'log10(DGR) at 12+log(O/H) = 8.5, for linear slope: '+string(at85)
 	print,'Best fit slope: '+string(blah[1])
 	print,'Best fit intercept: '+string(blah[0])
+
+	restore,'data/prof_struct.idl'
+	plotsym,0,/fill
+	hidom = where(big_struct.hi gt big_struct.co*6d)
+	oplot,big_struct[hidom].metals,alog10(big_struct[hidom].local_dgr),ps=8,$
+		thick=5,color=getcolor('forest')
+
+	p1resid = alog10(allgoodsol.dgr)-(allgoodsol.metal+meanoff)
+	locresid = alog10(big_struct[hidom].local_dgr) - (big_struct[hidom].metals+meanoff)
+
+	plots,[0.17],[0.88],/normal,ps=1,thick=3
+	plots,[0.17],[0.83],/normal,ps=8,color=getcolor('forest')
+	xyouts,[0.185],[0.87],'Paper 1',charthick=5,/normal,charsize=1.3
+	xyouts,[0.185],[0.82],'HI Dominated Regions',charthick=5,/normal,charsize=1.3
+
+	plots,[0.17,0.22],[0.28,0.28],/normal,thick=5
+	plots,[0.17,0.22],[0.23,0.23],/normal,thick=5,linestyle=1
+	plots,[0.17,0.22],[0.18,0.18],/normal,thick=5,linestyle=2
+	xyouts,[0.23],[0.27],'Linear DGR(Z)',charthick=5,/normal,charsize=1.3
+	xyouts,[0.23],[0.22],'Linear DGR(Z) !MX!X/!M/!X 2',charthick=5,/normal,charsize=1.3
+	xyouts,[0.23],[0.17],'Best Fit',charthick=5,/normal,charsize=1.3
+
+	plothist,p1resid,bin=0.1,pos=[0.65,0.26,0.9,0.5],/noerase,charthick=5,$
+		thick=5,xthick=5,ythick=5,xr=[-0.5,0.5],/xs,$
+		xtit='DGR Residual (dex)',/ylog,yr=[1d0,1d2]
+	plothist,locresid,bin=0.1,pos=[0.65,0.26,0.9,0.5],/overplot,thick=5,$
+		color=getcolor('forest'),/ylog
+	oplot,alog10([0.5,0.5]),[0.1,1d3],linestyle=1,thick=5	
+	oplot,alog10([2.,2.]),[0.1,1d3],linestyle=1,thick=5
+
+	psclose
 
 stop
 end
