@@ -138,14 +138,14 @@ pro make_rprof, just=just
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 ;  dgr = 1e-2*10.^(big_struct.metals-8.5)
-  solar_dgr = 1.7e-2
+  solar_dgr = 1.8e-2
   dgr_pred = solar_dgr*10.^(big_struct.metals-8.5)
   h2 = big_struct.dust/dgr_pred - big_struct.hi
   alpha = h2 / big_struct.co
 
   fid_x = findgen(101)/100. + 8.0
   fid_dgr = solar_dgr*10.^(fid_x-8.5)
-  fid_y = calc_alpha(fid_dgr/solar_dgr, alpha_0=4.4 $
+  fid_y = calc_alpha(fid_dgr/solar_dgr, alpha_0=3.2 $
                      , av_0 = 2.3)
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -179,7 +179,18 @@ pro make_rprof, just=just
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; PLOT
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-  
+
+  ind = where(big_struct.gal ne "ngc2841")
+  x = big_struct[ind].metals
+  y = alpha[ind]
+  bin_prof, x, alog10(y) $
+            , xmin=8.2 $
+            , xmax=8.6 $
+            , binsize=0.1 $
+            , xmid=xmid $
+            , medprof=medalpha $
+            , madprof=madprof
+
   psfile = "../plots/alpha_co.eps"
   ps, file=psfile, /def, xsize=12, ysize=8, /color, /encapsulated, /ps
   circle, /fill
@@ -188,8 +199,9 @@ pro make_rprof, just=just
         , psym=8 $
         , ytitle="!7a!6!dCO!n [M!d!9n!6!n pc!u-2!n (K km s!u-1!n)!u-1!n]" $
         , xtitle="!6Metallicity [12 + log O/H]" $
-        , charthick=3, charsize=2, /ylo, yrange=[1e-1, 1e3]
-  oplot, [8.0, 9.0], [4.4, 4.4], lines=2, thick=3  
+        , charthick=3, charsize=2, /ylo, yrange=[1e-1, 1e3] 
+  oplot, [8.0, 9.0], [3.2, 3.2], lines=2, thick=3  
+  oplot, xmid, 10.^medalpha, psym=8, symsize=2, color=getcolor('red')
   oplot, fid_x, fid_y, thick=4, lines=1
   ps, /x
   spawn, 'gv '+psfile+' &'
